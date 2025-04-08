@@ -18,6 +18,9 @@ const notificationsSocket = require('./socket/notifications');
 // Middleware
 const authMiddleware = require('./middleware/auth');
 
+// Database
+const db = require('./models/database');
+
 // Initialize app
 const app = express();
 const server = http.createServer(app);
@@ -88,17 +91,83 @@ io.on('connection', (socket) => {
   console.log(`User connected: ${socket.id}`);
   
   if (socket.user && socket.user.isAuthenticated) {
+    // Track user connection status
+    const userId = socket.user.id;
+    
+    // Update user status to online
+    const updatedUser = db.users.updateOnlineStatus(userId, 'online');
+    
+    if (updatedUser) {
+      // Broadcast to all clients that this user is now online
+      io.emit('user_status_change', {
+        userId: updatedUser.id,
+        username: updatedUser.username,
+        status: 'online',
+        isAdmin: updatedUser.isAdmin
+      });
+    }
+    
     // Setup chat socket handlers for authenticated users only
     chatSocket(io, socket);
     
     // Setup notifications socket handlers for authenticated users only
     notificationsSocket(io, socket);
+    
+    // Handle manual status changes
+    socket.on('set_status', (data) => {
+      if (data && data.status && ['online', 'away', 'busy', 'offline'].includes(data.status)) {
+        const updatedUser = db.users.updateOnlineStatus(userId, data.status);
+        
+        if (updatedUser) {
+          // Broadcast to all clients
+          io.emit('user_status_change', {
+            userId: updatedUser.id,
+            username: updatedUser.username,
+            status: data.status,
+            isAdmin: updatedUser.isAdmin
+          });
+        }
+      }
+    });
+    
+    // Set up a heartbeat to keep track of active users
+    const heartbeatInterval = setInterval(() => {
+      db.users.updateLastActive(userId);
+    }, 30000); // Every 30 seconds
+    
+    // Clean up on disconnect
+    socket.on('disconnect', () => {
+      clearInterval(heartbeatInterval);
+      
+      // Mark user as offline after a delay to handle quick reconnects
+      setTimeout(() => {
+        const user = db.users.findById(userId);
+        // If user hasn't reconnected within 1 minute, mark as offline
+        if (user && new Date() - new Date(user.lastActive) > 60000) {
+          const updatedUser = db.users.updateOnlineStatus(userId, 'offline');
+          
+          if (updatedUser) {
+            io.emit('user_status_change', {
+              userId: updatedUser.id,
+              username: updatedUser.username,
+              status: 'offline',
+              isAdmin: updatedUser.isAdmin
+            });
+          }
+        }
+      }, 60000); // Wait 1 minute before marking offline
+      
+      console.log(`User disconnected: ${socket.id}`);
+    });
+  } else {
+    socket.on('disconnect', () => {
+      console.log(`Socket disconnected: ${socket.id}`);
+    });
   }
-  
-  socket.on('disconnect', () => {
-    console.log(`Socket disconnected: ${socket.id}`);
-  });
 });
+
+// Create admin user if it doesn't exist
+db.createAdminUser();
 
 // Start server
 const PORT = process.env.PORT || 5000;

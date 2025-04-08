@@ -201,4 +201,93 @@ function updateUserUI(user) {
             }
         }
     });
+    
+    // Update status dropdown if it exists
+    const statusDropdown = document.getElementById('userStatusDropdown');
+    if (statusDropdown) {
+        // Select the current status in the dropdown
+        const currentStatus = user.onlineStatus || 'online';
+        const statusOption = statusDropdown.querySelector(`option[value="${currentStatus}"]`);
+        if (statusOption) {
+            statusOption.selected = true;
+        }
+    }
 }
+
+// Set up the online status dropdown
+document.addEventListener('DOMContentLoaded', function() {
+    // Add a user status dropdown to the navbar if it doesn't exist
+    const navbarNav = document.querySelector('.navbar-nav');
+    
+    if (navbarNav && !document.getElementById('userStatusDropdown')) {
+        // Create status dropdown container
+        const statusDropdownContainer = document.createElement('li');
+        statusDropdownContainer.className = 'nav-item dropdown ms-2';
+        
+        // Create status dropdown HTML
+        statusDropdownContainer.innerHTML = `
+            <div class="dropdown">
+                <button class="btn btn-sm dropdown-toggle d-flex align-items-center" type="button" id="statusDropdownBtn" data-bs-toggle="dropdown" aria-expanded="false">
+                    <span class="status-indicator status-online me-2"></span>
+                    <span class="d-none d-md-inline">Status</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="statusDropdownBtn">
+                    <li class="px-3 py-1"><h6 class="dropdown-header">Set your status</h6></li>
+                    <li>
+                        <select id="userStatusDropdown" class="form-select form-select-sm">
+                            <option value="online">🟢 Online</option>
+                            <option value="away">🟠 Away</option>
+                            <option value="busy">🔴 Busy</option>
+                            <option value="offline">⚫ Appear Offline</option>
+                        </select>
+                    </li>
+                </ul>
+            </div>
+        `;
+        
+        navbarNav.appendChild(statusDropdownContainer);
+        
+        // Add event listener to the status dropdown
+        const statusDropdown = document.getElementById('userStatusDropdown');
+        if (statusDropdown) {
+            statusDropdown.addEventListener('change', function() {
+                const newStatus = this.value;
+                
+                // Update status indicator in the button
+                const statusIndicator = document.querySelector('#statusDropdownBtn .status-indicator');
+                if (statusIndicator) {
+                    statusIndicator.className = `status-indicator status-${newStatus} me-2`;
+                }
+                
+                // Send status update to server if socket is available
+                if (socket) {
+                    socket.emit('set_status', { status: newStatus });
+                    
+                    // Show a toast notification
+                    const statusEmojis = {
+                        'online': '🟢',
+                        'away': '🟠',
+                        'busy': '🔴',
+                        'offline': '⚫'
+                    };
+                    
+                    const statusMessages = {
+                        'online': 'You are now online and visible to everyone',
+                        'away': 'You are now set as away',
+                        'busy': 'You are now set as busy/do not disturb',
+                        'offline': 'You now appear offline to others'
+                    };
+                    
+                    showToast('Status Updated', `${statusEmojis[newStatus]} ${statusMessages[newStatus]}`);
+                    
+                    // Update the current user object
+                    const user = getCurrentUser();
+                    if (user) {
+                        user.onlineStatus = newStatus;
+                        localStorage.setItem('user', JSON.stringify(user));
+                    }
+                }
+            });
+        }
+    }
+});

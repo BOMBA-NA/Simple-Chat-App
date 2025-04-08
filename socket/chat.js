@@ -276,9 +276,35 @@ module.exports = (io, socket) => {
     try {
       const recentChats = db.chat.getRecentChats(socket.user.id);
       
+      // Get all available users for chat
+      const allUsers = db.users.getAll().filter(user => user.id !== socket.user.id);
+      
+      // Enhance each chat with online status and admin badge
+      const enhancedChats = recentChats.map(chat => {
+        const user = allUsers.find(u => u.id === chat.userId);
+        return {
+          ...chat,
+          isOnline: user ? user.isOnline : false,
+          isAdmin: user ? user.isAdmin : false,
+          adminBadge: user ? user.adminBadge : false,
+          status: user ? user.onlineStatus : 'offline'
+        };
+      });
+      
       callback({ 
         success: true, 
-        chats: recentChats 
+        chats: enhancedChats,
+        availableUsers: allUsers.map(user => ({
+          id: user.id,
+          username: user.username,
+          displayName: user.displayName || user.username,
+          avatar: user.avatar,
+          isOnline: user.isOnline,
+          status: user.onlineStatus || 'offline',
+          isAdmin: user.isAdmin,
+          adminBadge: user.adminBadge,
+          lastActive: user.lastActive
+        }))
       });
     } catch (error) {
       console.error('Get recent chats error:', error);

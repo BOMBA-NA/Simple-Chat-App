@@ -7,6 +7,37 @@ const notifications = [];
 const reactions = [];
 const comments = [];
 
+// Function to create admin account if it doesn't exist
+const createAdminUser = () => {
+  const bcrypt = require('bcryptjs');
+  // Check if admin account already exists
+  const adminExists = users.some(user => user.username === 'Administrator');
+  
+  if (!adminExists) {
+    // Create admin user with hashed password
+    const hashedPassword = bcrypt.hashSync('admin', 10);
+    const adminEmail = 'admin@arcadetalk.com';
+    
+    users.push({
+      id: 'admin' + generateId(),
+      username: 'Administrator',
+      displayName: 'Administrator',
+      email: adminEmail,
+      password: hashedPassword,
+      role: 'admin',
+      isAdmin: true, // Explicit flag for admin status
+      adminBadge: true, // Flag to show admin badge
+      balance: 1000,
+      avatar: 'https://ui-avatars.com/api/?name=Administrator&background=8a2be2&color=fff',
+      createdAt: new Date(),
+      isActive: true,
+      lastActive: new Date() // Track last activity for online status
+    });
+    
+    console.log(`Admin account auto-created: email: "${adminEmail}", name: "Administrator", password: "admin"`);
+  }
+};
+
 // Generate unique ID
 const generateId = () => {
   return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
@@ -18,13 +49,19 @@ const userMethods = {
     const newUser = {
       id: generateId(),
       username: userData.username,
+      displayName: userData.username, // Added displayName field
       email: userData.email,
       password: userData.password, // Should be hashed before storing
       role: userData.role || 'user',
+      isAdmin: userData.role === 'admin', // Flag for showing admin badge
+      adminBadge: userData.role === 'admin', // Flag for showing admin badge
       balance: 100, // Initial balance for new users
       avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(userData.username)}&background=random`,
       createdAt: new Date(),
-      isActive: true
+      isActive: true,
+      lastActive: new Date(), // For online status tracking
+      onlineStatus: 'online', // Can be 'online', 'away', 'offline'
+      isTyping: false // For typing indicators
     };
     users.push(newUser);
     return { ...newUser, password: undefined }; // Return user without password
@@ -38,7 +75,13 @@ const userMethods = {
     const user = users.find(user => user.id === id);
     if (user) {
       const { password, ...userWithoutPassword } = user;
-      return userWithoutPassword;
+      // Calculate if user is online based on lastActive timestamp
+      // Consider user online if active in the last 2 minutes
+      const isOnlineNow = user.lastActive && (new Date() - new Date(user.lastActive) < 2 * 60 * 1000);
+      return { 
+        ...userWithoutPassword, 
+        isOnline: isOnlineNow 
+      };
     }
     return null;
   },
@@ -54,7 +97,38 @@ const userMethods = {
   },
   
   getAll: () => {
-    return users.map(({ password, ...user }) => user);
+    return users.map(({ password, ...user }) => {
+      // Calculate if user is online based on lastActive timestamp
+      const isOnlineNow = user.lastActive && (new Date() - new Date(user.lastActive) < 2 * 60 * 1000);
+      return { ...user, isOnline: isOnlineNow };
+    });
+  },
+  
+  updateOnlineStatus: (userId, status) => {
+    const index = users.findIndex(user => user.id === userId);
+    if (index !== -1) {
+      users[index].onlineStatus = status;
+      users[index].lastActive = new Date();
+      
+      // Broadcast updated online status to all users
+      return { 
+        id: users[index].id,
+        username: users[index].username,
+        onlineStatus: users[index].onlineStatus,
+        lastActive: users[index].lastActive,
+        isAdmin: users[index].isAdmin
+      };
+    }
+    return null;
+  },
+  
+  updateLastActive: (userId) => {
+    const index = users.findIndex(user => user.id === userId);
+    if (index !== -1) {
+      users[index].lastActive = new Date();
+      return true;
+    }
+    return false;
   },
   
   transferFunds: (fromId, toId, amount) => {
@@ -82,7 +156,20 @@ const userMethods = {
   getLeaderboard: () => {
     return [...users]
       .sort((a, b) => b.balance - a.balance)
-      .map(({ id, username, balance, avatar }) => ({ id, username, balance, avatar }));
+      .map(({ id, username, displayName, balance, avatar, isAdmin, adminBadge, lastActive }) => {
+        // Calculate if user is online based on lastActive timestamp
+        const isOnlineNow = lastActive && (new Date() - new Date(lastActive) < 2 * 60 * 1000);
+        return { 
+          id, 
+          username, 
+          displayName: displayName || username,
+          balance, 
+          avatar, 
+          isAdmin: !!isAdmin, 
+          adminBadge: !!adminBadge,
+          isOnline: isOnlineNow
+        };
+      });
   }
 };
 
@@ -399,5 +486,6 @@ module.exports = {
   posts: postMethods,
   comments: commentMethods,
   chat: chatMethods,
-  notifications: notificationMethods
+  notifications: notificationMethods,
+  createAdminUser: createAdminUser
 };

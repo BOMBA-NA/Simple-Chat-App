@@ -207,12 +207,25 @@ function setupLogout() {
 }
 
 // Setup mobile navigation
+// Initialize function to run on DOM content loaded
+document.addEventListener('DOMContentLoaded', () => {
+    // Set up mobile navigation if we're on a page that has it
+    if (document.querySelector('.mobile-nav') || document.querySelector('.navbar-nav')) {
+        setupMobileNav();
+    }
+});
+
 function setupMobileNav() {
     const mobileNavItems = document.querySelectorAll('.mobile-nav-item');
     const navLinks = document.querySelectorAll('.nav-link');
     
+    // Export the switchSection function to make it available globally
+    window.switchSection = switchSection;
+    
     // Function to switch active section
     function switchSection(sectionId) {
+        console.log(`Switching to section: ${sectionId}`);
+        
         // Hide all sections
         document.querySelectorAll('.section').forEach(section => {
             section.classList.remove('active');
@@ -246,6 +259,11 @@ function setupMobileNav() {
     
     // Set up mobile nav item click events
     mobileNavItems.forEach(item => {
+        if (item.querySelector('a')) {
+            // Skip items with direct links (like admin link)
+            return;
+        }
+        
         item.addEventListener('click', () => {
             const sectionId = item.dataset.section;
             switchSection(sectionId);
@@ -254,6 +272,11 @@ function setupMobileNav() {
     
     // Set up navbar link click events
     navLinks.forEach(link => {
+        // Skip links that are actual navigation links (like admin link)
+        if (link.getAttribute('href') && link.getAttribute('href').startsWith('/')) {
+            return;
+        }
+        
         link.addEventListener('click', (e) => {
             e.preventDefault();
             const sectionId = link.id.replace('Tab', 'Section');

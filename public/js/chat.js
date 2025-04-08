@@ -153,11 +153,69 @@ function setupChatSocketListeners() {
     socket.on('message_unsent', (data) => {
         markMessageAsUnsent(data.messageId);
     });
+    
+    // Listen for user status changes
+    socket.on('user_status_change', (data) => {
+        // Update status indicators in chat list
+        updateUserStatus(data.userId, data.status);
+        
+        // Update the active chat header if this is the active user
+        if (activeChat && data.userId === activeChat.userId) {
+            const statusIndicator = document.querySelector('.status-indicator-text');
+            if (statusIndicator) {
+                statusIndicator.className = `status-indicator-text ms-2 ${data.status === 'online' ? 'text-success' : 'text-muted'}`;
+                statusIndicator.textContent = data.status;
+            }
+            
+            // If status changed to online, refresh chat to ensure we have latest data
+            if (data.status === 'online') {
+                loadChatHistory(activeChat.userId);
+            }
+        }
+        
+        // Show playful toast notification for users coming online (but not when going offline)
+        if (data.status === 'online') {
+            const randomEmojis = ['🎮', '🕹️', '🎯', '🎲', '🎪', '🎭', '🎨', '🎡'];
+            const randomEmoji = randomEmojis[Math.floor(Math.random() * randomEmojis.length)];
+            showToast('User Online', `${randomEmoji} ${data.username} is now online!`, 2000);
+        }
+    });
 }
 
-// Load recent chats
+// Update user status in the chat list
+function updateUserStatus(userId, status) {
+    // Find all chat items for this user
+    const chatItems = document.querySelectorAll('.chat-item');
+    
+    chatItems.forEach(item => {
+        // Look for the username in this item
+        const usernameEl = item.querySelector('h6');
+        const chatUserId = item.getAttribute('data-user-id');
+        
+        // Check if this item belongs to the user (need to add data-user-id attribute elsewhere)
+        if (chatUserId === userId || item.onclick?.toString().includes(userId)) {
+            // Find status indicator
+            const statusIndicator = item.querySelector('.status-indicator');
+            if (statusIndicator) {
+                // Update class
+                statusIndicator.className = `status-indicator ${status === 'online' ? 'status-online' : 'status-offline'}`;
+                
+                // Add animation for transitions
+                statusIndicator.classList.add('status-animation');
+                
+                // Remove animation class after animation completes
+                setTimeout(() => {
+                    statusIndicator.classList.remove('status-animation');
+                }, 1000);
+            }
+        }
+    });
+}
+
+// Load recent chats and available users
 function loadRecentChats() {
     const chatList = document.getElementById('chatList');
+    const chatContainer = document.getElementById('chatContainer');
     
     if (!chatList) return;
     
@@ -176,22 +234,72 @@ function loadRecentChats() {
             if (response.success) {
                 chatList.innerHTML = '';
                 
+                // Add "Available Users" section header
+                const allUsersHeader = createElement('div', {
+                    className: 'chat-section-header'
+                }, [
+                    createElement('h6', { className: 'mb-2 chat-section-title' }, 'All Users')
+                ]);
+                
+                chatList.appendChild(allUsersHeader);
+                
+                // Create "Available Users" section with all users
+                if (response.availableUsers && response.availableUsers.length > 0) {
+                    // Sort users - online first, then alphabetically
+                    const sortedUsers = response.availableUsers.sort((a, b) => {
+                        // First sort by online status
+                        if (a.isOnline && !b.isOnline) return -1;
+                        if (!a.isOnline && b.isOnline) return 1;
+                        
+                        // Then sort by username
+                        return a.username.localeCompare(b.username);
+                    });
+                    
+                    sortedUsers.forEach(user => {
+                        const userChat = {
+                            userId: user.id,
+                            username: user.displayName || user.username,
+                            avatar: user.avatar,
+                            isOnline: user.isOnline,
+                            status: user.status || 'offline',
+                            isAdmin: user.isAdmin,
+                            adminBadge: user.adminBadge
+                        };
+                        
+                        const chatElement = createChatElement(userChat);
+                        chatList.appendChild(chatElement);
+                    });
+                }
+                
+                // Add "Recent Chats" section if there are any
                 if (response.chats && response.chats.length > 0) {
+                    const recentChatsHeader = createElement('div', {
+                        className: 'chat-section-header mt-3'
+                    }, [
+                        createElement('h6', { className: 'mb-2 chat-section-title' }, 'Recent Chats')
+                    ]);
+                    
+                    chatList.appendChild(recentChatsHeader);
+                    
                     response.chats.forEach(chat => {
                         const chatElement = createChatElement(chat);
                         chatList.appendChild(chatElement);
                     });
-                } else {
+                }
+                
+                // Show empty state message if no users available
+                if ((!response.availableUsers || response.availableUsers.length === 0) && 
+                    (!response.chats || response.chats.length === 0)) {
                     chatList.innerHTML = `
                         <div class="text-center p-3">
-                            <p>No recent chats. Start a new conversation!</p>
+                            <p>No users available to chat with.</p>
                         </div>
                     `;
                 }
             } else {
                 chatList.innerHTML = `
                     <div class="text-center p-3">
-                        <p>Error loading chats. Please try again later.</p>
+                        <p>Error loading users and chats. Please try again later.</p>
                     </div>
                 `;
             }
@@ -224,19 +332,48 @@ function createChatElement(chat) {
         timeString = formatDate(chat.timestamp);
     }
     
-    // Create chat list item
-    const chatItem = createElement('div', { 
-        className: `list-group-item chat-item ${activeChat && activeChat.userId === chat.userId ? 'active' : ''}`,
-        onclick: () => openChat(chat)
+    // Create status indicator element based on online status
+    const statusIndicator = createElement('span', {
+        className: `status-indicator ${chat.isOnline ? 'status-online' : 'status-offline'}`
+    });
+    
+    // Create avatar container with status indicator
+    const avatarContainer = createElement('div', {
+        className: 'avatar-container position-relative'
     }, [
         createElement('img', { 
             src: chat.avatar || 'https://ui-avatars.com/api/?name=Unknown&background=random', 
             alt: chat.username, 
             className: 'chat-avatar'
         }),
+        statusIndicator
+    ]);
+    
+    // Prepare username element, include admin badge if needed
+    let usernameElement;
+    if (chat.isAdmin || chat.adminBadge) {
+        usernameElement = createElement('div', { 
+            className: 'd-flex align-items-center' 
+        }, [
+            createElement('h6', { className: 'mb-0 me-1' }, chat.username),
+            createElement('span', { 
+                className: 'admin-badge',
+                title: 'Administrator'
+            }, 'admin')
+        ]);
+    } else {
+        usernameElement = createElement('h6', { className: 'mb-0' }, chat.username);
+    }
+    
+    // Create chat list item
+    const chatItem = createElement('div', { 
+        className: `list-group-item chat-item ${activeChat && activeChat.userId === chat.userId ? 'active' : ''}`,
+        onclick: () => openChat(chat)
+    }, [
+        avatarContainer,
         createElement('div', { className: 'flex-grow-1 ms-3' }, [
             createElement('div', { className: 'd-flex justify-content-between' }, [
-                createElement('h6', { className: 'mb-0' }, chat.username),
+                usernameElement,
                 createElement('small', { className: 'text-muted' }, timeString)
             ]),
             createElement('p', { className: 'mb-0 text-muted small' }, escapeHtml(messagePreview))
@@ -262,7 +399,30 @@ function openChat(chat) {
     // Update chat header
     if (chatUserAvatar && chatUsername) {
         chatUserAvatar.src = chat.avatar || 'https://ui-avatars.com/api/?name=Unknown&background=random';
-        chatUsername.textContent = chat.username;
+        
+        // Clear previous content
+        chatUsername.innerHTML = '';
+        
+        // Add username with admin badge if admin
+        if (chat.isAdmin || chat.adminBadge) {
+            const usernameSpan = document.createElement('span');
+            usernameSpan.textContent = chat.username;
+            chatUsername.appendChild(usernameSpan);
+            
+            const adminBadge = document.createElement('span');
+            adminBadge.className = 'admin-badge ms-2';
+            adminBadge.title = 'Administrator';
+            adminBadge.textContent = 'admin';
+            chatUsername.appendChild(adminBadge);
+        } else {
+            chatUsername.textContent = chat.username;
+        }
+        
+        // Add online status indicator
+        const statusIndicator = document.createElement('span');
+        statusIndicator.className = `status-indicator-text ms-2 ${chat.isOnline ? 'text-success' : 'text-muted'}`;
+        statusIndicator.textContent = chat.isOnline ? 'online' : 'offline';
+        chatUsername.appendChild(statusIndicator);
     }
     
     // Hide typing indicator
