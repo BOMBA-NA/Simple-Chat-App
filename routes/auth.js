@@ -2,7 +2,15 @@ const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
-const db = require('../models/database');
+
+// Database - Use the same dynamic selection as in server.js
+let db;
+if (process.env.USE_PG === 'true') {
+  db = require('../models/pgAdapter');
+} else {
+  db = require('../models/database');
+}
+
 const authMiddleware = require('../middleware/auth');
 
 // JWT secret key

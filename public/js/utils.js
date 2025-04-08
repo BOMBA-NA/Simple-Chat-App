@@ -115,6 +115,16 @@ function handleApiError(error, defaultMessage = 'An error occurred') {
 // Fetch API with authorization headers
 async function fetchWithAuth(url, options = {}) {
     const token = getToken();
+    const user = getCurrentUser();
+    
+    // Check for MongoDB ObjectID before connecting
+    if (user && user.id && typeof user.id === 'string' && /^[0-9a-fA-F]{24}$/.test(user.id)) {
+        console.log('Detected MongoDB ObjectId in user data, clearing local storage');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/';
+        throw new Error('Your session was using MongoDB format IDs which are incompatible with PostgreSQL. Please re-login.');
+    }
     
     if (!token) {
         throw new Error('No authentication token available');

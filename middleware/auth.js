@@ -1,5 +1,12 @@
 const jwt = require('jsonwebtoken');
-const db = require('../models/database');
+
+// Database - Use the same dynamic selection as in server.js
+let db;
+if (process.env.USE_PG === 'true') {
+  db = require('../models/pgAdapter');
+} else {
+  db = require('../models/database');
+}
 
 // JWT secret key
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';

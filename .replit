@@ -1,4 +1,4 @@
-modules = ["nodejs-20"]
+modules = ["nodejs-20", "postgresql-16"]
 
 [nix]
 channel = "stable-24_05"
@@ -13,10 +13,14 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "workflow.run"
-args = "Server"
+args = "Check PostgreSQL"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Server with PostgreSQL"
 
 [[workflows.workflow]]
-name = "Server"
+name = "Check PostgreSQL"
 author = "agent"
 
 [workflows.workflow.metadata]
@@ -27,7 +31,21 @@ task = "packager.installForAll"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node server.js"
+args = "node scripts/check-pg-connection.js"
+
+[[workflows.workflow]]
+name = "Server with PostgreSQL"
+author = "agent"
+
+[workflows.workflow.metadata]
+agentRequireRestartOnSave = false
+
+[[workflows.workflow.tasks]]
+task = "packager.installForAll"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "USE_PG=true node server.js"
 waitForPort = 5000
 
 [deployment]

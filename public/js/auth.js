@@ -17,6 +17,20 @@ document.addEventListener('DOMContentLoaded', () => {
 function checkAuthState() {
     const currentPath = window.location.pathname;
     const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    
+    // Check if we have an old MongoDB ObjectId (24 characters, hex) 
+    // that won't work with PostgreSQL's integer IDs
+    if (user && user.id && typeof user.id === 'string' && /^[0-9a-fA-F]{24}$/.test(user.id)) {
+        // We have a MongoDB ObjectId that won't work with PostgreSQL
+        console.log('Detected MongoDB ObjectId, clearing local storage');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        if (!currentPath.startsWith('/login') && !currentPath.startsWith('/register')) {
+            window.location.href = '/';
+            return;
+        }
+    }
     
     // Pages that don't require authentication
     const publicPages = ['/', '/login', '/register', '/forgot-password', '/reset-password'];
@@ -38,7 +52,17 @@ function checkAuthState() {
         .then(response => {
             if (response.ok) {
                 // Token is valid, redirect to home
-                window.location.href = '/home';
+                return response.json().then(data => {
+                    // Make sure we have a valid user with numeric ID for PostgreSQL
+                    if (data.user && data.user.id && !isNaN(parseInt(data.user.id))) {
+                        window.location.href = '/home';
+                    } else {
+                        // User data is not compatible with PostgreSQL
+                        console.log('User data not compatible with PostgreSQL');
+                        localStorage.removeItem('token');
+                        localStorage.removeItem('user');
+                    }
+                });
             } else {
                 // Token is invalid, clear it
                 localStorage.removeItem('token');
@@ -61,6 +85,16 @@ function setupSocket() {
     if (!isLoggedIn()) return;
     
     const token = getToken();
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    
+    // Check for MongoDB ObjectID before connecting
+    if (user && user.id && typeof user.id === 'string' && /^[0-9a-fA-F]{24}$/.test(user.id)) {
+        console.log('Detected MongoDB ObjectId in user data, clearing local storage');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/';
+        return;
+    }
     
     // Connect to socket.io with authentication
     socket = io({

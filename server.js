@@ -22,7 +22,17 @@ const notificationsSocket = require('./socket/notifications');
 const authMiddleware = require('./middleware/auth');
 
 // Database
-const db = require('./models/database');
+// Use environment variable to determine which database to use (MongoDB or PostgreSQL)
+let db;
+if (process.env.USE_PG === 'true') {
+  // PostgreSQL database
+  console.log('Using PostgreSQL database');
+  db = require('./models/pgAdapter');
+} else {
+  // MongoDB database
+  console.log('Using MongoDB database');
+  db = require('./models/database');
+}
 
 // Initialize app
 const app = express();
@@ -45,10 +55,14 @@ app.use('/api/posts', postsRoutes);
 
 // Serve HTML files
 app.get('/', (req, res) => {
+  // Clear any existing token cookie to force re-login with PostgreSQL
+  res.clearCookie('token');
   res.sendFile(path.join(__dirname, 'views/login.html'));
 });
 
 app.get('/register', (req, res) => {
+  // Clear any existing token cookie
+  res.clearCookie('token');
   res.sendFile(path.join(__dirname, 'views/register.html'));
 });
 
@@ -81,14 +95,38 @@ io.use(async (socket, next) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     
+    // Handle possible MongoDB ID vs PostgreSQL ID issue
+    let userId = decoded.id;
+    if (typeof userId === 'string') {
+      // If this is a MongoDB ObjectId style string
+      if (/^[0-9a-fA-F]{24}$/.test(userId)) {
+        console.log('Socket auth: MongoDB ObjectId detected, cannot use with PostgreSQL');
+        socket.user = { id: socket.id, isAuthenticated: false };
+        return next();
+      }
+      // If it's a numeric string, convert to number
+      userId = parseInt(userId, 10);
+      if (isNaN(userId)) {
+        console.log('Socket auth: Invalid user ID format');
+        socket.user = { id: socket.id, isAuthenticated: false };
+        return next();
+      }
+    }
+    
     // Verify the user exists in the database
-    const user = await db.users.findById(decoded.id);
+    const user = await db.users.findById(userId);
     if (!user) {
+      console.log('Socket auth: User not found in database');
       socket.user = { id: socket.id, isAuthenticated: false };
       return next();
     }
     
-    socket.user = { ...decoded, isAuthenticated: true };
+    // Assign the user object with numeric ID to ensure compatibility
+    socket.user = { 
+      ...decoded,
+      id: user.id, // Use the numeric ID from the database
+      isAuthenticated: true 
+    };
     next();
   } catch (err) {
     console.error('Socket authentication error:', err);
@@ -197,6 +235,20 @@ io.on('connection', async (socket) => {
 // Create admin user if it doesn't exist and start server
 (async () => {
   try {
+    // Initialize PostgreSQL database if needed
+    if (process.env.USE_PG === 'true') {
+      console.log('Connecting to PostgreSQL...');
+      const connected = await db.connectToDB();
+      if (!connected) {
+        console.error('Could not connect to PostgreSQL database');
+        process.exit(1);
+      }
+      
+      console.log('Initializing PostgreSQL database schema...');
+      await db.initializeDatabase();
+    }
+    
+    // Create admin user
     await db.createAdminUser();
     console.log('Admin user setup complete');
     

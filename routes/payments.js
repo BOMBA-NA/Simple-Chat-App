@@ -2,7 +2,14 @@ const express = require('express');
 const router = express.Router();
 const { verifyToken } = require('../middleware/auth');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
-const { updateUserBalance, findUserById } = require('../models/database');
+
+// Database - Use the same dynamic selection as in server.js
+let db;
+if (process.env.USE_PG === 'true') {
+  db = require('../models/pgAdapter');
+} else {
+  db = require('../models/database');
+}
 
 // Get Stripe publishable key
 router.get('/config', (req, res) => {
@@ -89,7 +96,7 @@ router.get('/verify/:paymentIntentId', verifyToken, async (req, res) => {
     }
     
     // Load the current user to get their balance
-    const user = await findUserById(req.user.id);
+    const user = await db.users.findById(req.user.id);
     
     if (!user) {
       return res.status(404).json({ 
@@ -100,7 +107,7 @@ router.get('/verify/:paymentIntentId', verifyToken, async (req, res) => {
     
     // Calculate new balance and update user
     const newBalance = (user.balance || 0) + coinsToAdd;
-    await updateUserBalance(req.user.id, newBalance);
+    await db.users.update(req.user.id, { balance: newBalance });
     
     // If this is a premium subscription, update user's premium status
     if (packageId === 'premium') {
