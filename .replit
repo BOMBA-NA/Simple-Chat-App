@@ -4,7 +4,7 @@ modules = ["nodejs-20", "postgresql-16"]
 channel = "stable-24_05"
 
 [workflows]
-runButton = "Project"
+runButton = "Run PostgreSQL Server"
 
 [[workflows.workflow]]
 name = "Project"
@@ -47,6 +47,15 @@ task = "packager.installForAll"
 task = "shell.exec"
 args = "USE_PG=true node server.js"
 waitForPort = 5000
+
+[[workflows.workflow]]
+name = "Run PostgreSQL Server"
+author = 41279916
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "USE_PG=true node server.js"
 
 [deployment]
 run = ["sh", "-c", "node server.js"]

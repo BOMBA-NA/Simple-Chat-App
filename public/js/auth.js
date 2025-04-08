@@ -260,6 +260,95 @@ function updateUserUI(user) {
     }
 }
 
+// Get authentication token
+function getToken() {
+    return localStorage.getItem('token');
+}
+
+// Check if user is logged in
+function isLoggedIn() {
+    return !!getToken();
+}
+
+// Get current user from localStorage
+function getCurrentUser() {
+    try {
+        return JSON.parse(localStorage.getItem('user') || '{}');
+    } catch (e) {
+        console.error('Error parsing user data:', e);
+        return {};
+    }
+}
+
+// Helper function for authenticated fetch requests
+async function fetchWithAuth(url, options = {}) {
+    const token = getToken();
+    if (!token) {
+        throw new Error('No authentication token found');
+    }
+    
+    const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        ...(options.headers || {})
+    };
+    
+    const response = await fetch(url, {
+        ...options,
+        headers
+    });
+    
+    if (response.status === 401) {
+        // Token expired or invalid
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+        throw new Error('Authentication failed');
+    }
+    
+    return response.json();
+}
+
+// Show toast notification
+function showToast(title, message, type = 'info') {
+    const toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+        // Create toast container if it doesn't exist
+        const container = document.createElement('div');
+        container.id = 'toastContainer';
+        container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+        document.body.appendChild(container);
+    }
+    
+    const toastId = `toast-${Date.now()}`;
+    const toast = document.createElement('div');
+    toast.className = `toast show`;
+    toast.id = toastId;
+    toast.setAttribute('role', 'alert');
+    toast.setAttribute('aria-live', 'assertive');
+    toast.setAttribute('aria-atomic', 'true');
+    
+    toast.innerHTML = `
+        <div class="toast-header">
+            <strong class="me-auto">${title}</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
+        </div>
+        <div class="toast-body">
+            ${message}
+        </div>
+    `;
+    
+    document.getElementById('toastContainer').appendChild(toast);
+    
+    // Auto-remove after 5 seconds
+    setTimeout(() => {
+        const toastElement = document.getElementById(toastId);
+        if (toastElement) {
+            toastElement.remove();
+        }
+    }, 5000);
+}
+
 // Set up the online status dropdown
 document.addEventListener('DOMContentLoaded', function() {
     // Add a user status dropdown to the navbar if it doesn't exist

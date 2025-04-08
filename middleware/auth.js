@@ -13,13 +13,15 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
 // Verify JWT token middleware
 const verifyToken = async (req, res, next) => {
-  const token = req.cookies.token || req.header('Authorization')?.replace('Bearer ', '');
-  
-  if (!token) {
-    return res.status(401).json({ message: 'Authentication required' });
-  }
-  
   try {
+    // Check for token in cookies or Authorization header
+    const token = req.cookies.token || req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+    
+    // Verify token
     const decoded = jwt.verify(token, JWT_SECRET);
     
     // Check if user exists in database - use await for async findById
@@ -28,10 +30,24 @@ const verifyToken = async (req, res, next) => {
       return res.status(401).json({ message: 'User not found' });
     }
     
-    req.user = decoded;
+    // Attach user to request
+    req.user = {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role
+    };
+    
     next();
   } catch (err) {
-    return res.status(401).json({ message: 'Invalid token' });
+    console.error('Token verification error:', err);
+    if (err.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: 'Invalid token' });
+    } else if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token expired' });
+    } else {
+      return res.status(401).json({ message: 'Authentication failed' });
+    }
   }
 };
 
