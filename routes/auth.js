@@ -19,7 +19,7 @@ router.post('/register', async (req, res) => {
     }
     
     // Check if email already exists
-    const existingUser = db.users.findByEmail(email);
+    const existingUser = await db.users.findByEmail(email);
     if (existingUser) {
       return res.status(400).json({ message: 'User with this email already exists' });
     }
@@ -29,7 +29,7 @@ router.post('/register', async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, salt);
     
     // Create new user
-    const newUser = db.users.create({
+    const newUser = await db.users.create({
       username,
       email,
       password: hashedPassword,
@@ -77,7 +77,7 @@ router.post('/login', async (req, res) => {
     }
     
     // Find user by email
-    const user = db.users.findByEmail(email);
+    const user = await db.users.findByEmail(email);
     if (!user) {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
@@ -126,22 +126,27 @@ router.post('/logout', (req, res) => {
 });
 
 // Get current user
-router.get('/me', authMiddleware.verifyToken, (req, res) => {
-  const user = db.users.findById(req.user.id);
-  if (!user) {
-    return res.status(404).json({ message: 'User not found' });
-  }
-  
-  return res.json({
-    user: {
-      id: user.id,
-      username: user.username,
-      email: user.email,
-      role: user.role,
-      avatar: user.avatar,
-      balance: user.balance
+router.get('/me', authMiddleware.verifyToken, async (req, res) => {
+  try {
+    const user = await db.users.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
     }
-  });
+    
+    return res.json({
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role,
+        avatar: user.avatar,
+        balance: user.balance
+      }
+    });
+  } catch (error) {
+    console.error('Get user error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
 });
 
 // Forgot password - send reset email (simulated)
@@ -150,7 +155,7 @@ router.post('/forgot-password', async (req, res) => {
     const { email } = req.body;
     
     // Find user by email
-    const user = db.users.findByEmail(email);
+    const user = await db.users.findByEmail(email);
     if (!user) {
       // For security, don't reveal that the user doesn't exist
       return res.json({ message: 'If your email is registered, you will receive a password reset link' });
@@ -201,7 +206,7 @@ router.post('/reset-password', async (req, res) => {
     }
     
     // Find user
-    const user = db.users.findById(decoded.id);
+    const user = await db.users.findById(decoded.id);
     if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
@@ -211,7 +216,7 @@ router.post('/reset-password', async (req, res) => {
     const hashedPassword = await bcrypt.hash(newPassword, salt);
     
     // Update user password
-    db.users.update(user.id, { password: hashedPassword });
+    await db.users.update(user.id, { password: hashedPassword });
     
     return res.json({ message: 'Password reset successful' });
   } catch (error) {
