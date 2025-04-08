@@ -14,7 +14,7 @@
 <body>
     <div class="app-container">
         <!-- Navigation -->
-        <nav class="navbar navbar-expand-lg navbar-dark">
+        <nav class="navbar navbar-expand-lg navbar-light bg-white shadow-sm">
             <div class="container-fluid">
                 <a class="navbar-brand" href="#">ArcadeTalk</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
@@ -36,6 +36,9 @@
                         </li>
                         <li class="nav-item">
                             <a class="nav-link" href="#" id="settingsTab">Settings</a>
+                        </li>
+                        <li class="nav-item admin-only" style="display: none;">
+                            <a class="nav-link" href="/admin" id="adminTab"><i class="fas fa-shield-alt"></i> Admin</a>
                         </li>
                     </ul>
                     <ul class="navbar-nav ms-auto">
@@ -272,6 +275,12 @@
             <div class="mobile-nav-item" data-section="settingsSection">
                 <i class="fas fa-cog"></i>
                 <span>Settings</span>
+            </div>
+            <div class="mobile-nav-item admin-only" style="display: none;">
+                <a href="/admin" style="color: inherit; text-decoration: none;">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>Admin</span>
+                </a>
             </div>
         </div>
     </div>

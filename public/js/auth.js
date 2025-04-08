@@ -189,4 +189,16 @@ function updateUserUI(user) {
     usernameElements.forEach(el => {
         if (el) el.textContent = user.username;
     });
+    
+    // Show admin link if user has admin role
+    const adminLinks = document.querySelectorAll('.admin-only');
+    adminLinks.forEach(el => {
+        if (el) {
+            if (user.role === 'admin') {
+                el.style.display = 'block';
+            } else {
+                el.style.display = 'none';
+            }
+        }
+    });
 }
