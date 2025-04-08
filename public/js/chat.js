@@ -12,14 +12,106 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize Chat
     setupChat();
     
-    // Initialize Send Money Modal
-    setupSendMoneyModal();
+    // Initialize Send Money Modal - Removed as per requirements
+    // setupSendMoneyModal();
+    
+    // Setup background music
+    setupBackgroundMusic();
     
     // Listen for Socket.io events
     if (socket) {
         setupChatSocketListeners();
     }
 });
+
+// Setup background music player
+function setupBackgroundMusic() {
+    // Check if music player already exists
+    if (document.getElementById('bgMusicPlayer')) return;
+    
+    // Create audio element
+    const audio = document.createElement('audio');
+    audio.id = 'bgMusicPlayer';
+    audio.loop = true;
+    audio.volume = 0.3; // Start with lowered volume
+    
+    // Create source
+    const source = document.createElement('source');
+    source.src = '/asset/PurpleDream.mp3';
+    source.type = 'audio/mp3';
+    
+    audio.appendChild(source);
+    document.body.appendChild(audio);
+    
+    // Create music control
+    const musicControl = document.createElement('div');
+    musicControl.className = 'music-control';
+    musicControl.innerHTML = `
+        <button id="toggleMusic" class="music-toggle-btn">
+            <i class="fas fa-volume-mute"></i>
+        </button>
+    `;
+    
+    // Add styles for music control
+    const style = document.createElement('style');
+    style.textContent = `
+        .music-control {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+        }
+        
+        .music-toggle-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .music-toggle-btn:hover {
+            transform: scale(1.1);
+        }
+        
+        .music-toggle-btn.playing {
+            background-color: #28a745;
+        }
+        
+        .music-toggle-btn i {
+            font-size: 1.2rem;
+        }
+    `;
+    document.head.appendChild(style);
+    document.body.appendChild(musicControl);
+    
+    // Toggle music on button click
+    const toggleButton = document.getElementById('toggleMusic');
+    toggleButton.addEventListener('click', () => {
+        if (audio.paused) {
+            audio.play()
+                .then(() => {
+                    toggleButton.innerHTML = '<i class="fas fa-volume-up"></i>';
+                    toggleButton.classList.add('playing');
+                })
+                .catch(err => {
+                    console.error('Error playing audio:', err);
+                    showToast('Error', 'Could not play background music');
+                });
+        } else {
+            audio.pause();
+            toggleButton.innerHTML = '<i class="fas fa-volume-mute"></i>';
+            toggleButton.classList.remove('playing');
+        }
+    });
+}
 
 // Setup chat functionality
 function setupChat() {
@@ -556,7 +648,7 @@ function appendMessage(message, isSent) {
     
     // Create message element with appropriate classes
     const messageElement = createElement('div', { 
-        className: `message ${isSent ? 'message-sent' : 'message-received'}`,
+        className: `message ${isSent ? 'sent' : 'received'}`,
         'data-id': message.id
     }, [
         // Message content
@@ -565,37 +657,85 @@ function appendMessage(message, isSent) {
         }, message.isDeleted ? 'This message was deleted' : escapeHtml(message.content)),
         
         // Message timestamp
-        createElement('div', { className: 'message-timestamp' }, timeString)
+        createElement('div', { className: 'message-time' }, timeString)
     ]);
     
     // Add message reactions if any
     if (message.reactions && Object.keys(message.reactions).length > 0) {
+        // Count reactions by emoji type
+        const reactionCounts = {};
+        for (const emoji of Object.values(message.reactions)) {
+            reactionCounts[emoji] = (reactionCounts[emoji] || 0) + 1;
+        }
+        
         const reactionsElement = createElement('div', { className: 'message-reactions' });
         
-        for (const [userId, emoji] of Object.entries(message.reactions)) {
-            reactionsElement.textContent += emoji;
+        // Create reaction elements with counts
+        for (const [emoji, count] of Object.entries(reactionCounts)) {
+            const reactionEl = createElement('div', { 
+                className: 'message-reaction',
+                'data-emoji': emoji,
+                onclick: () => reactToMessage(message.id, emoji)
+            }, [
+                document.createTextNode(emoji + ' '),
+                createElement('span', { className: 'message-reaction-count' }, count.toString())
+            ]);
+            
+            reactionsElement.appendChild(reactionEl);
         }
         
         messageElement.appendChild(reactionsElement);
     }
     
-    // Add context menu for message actions (only for sent messages)
-    if (isSent && !message.isDeleted) {
-        messageElement.addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            showMessageActions(message.id, e.clientX, e.clientY);
-        });
-    }
-    
-    // Add double-click event for reactions (only for received messages that aren't deleted)
-    if (!isSent && !message.isDeleted) {
+    // Add context menu/actions
+    if (!message.isDeleted) {
+        if (isSent) {
+            // Long press or right click for sent messages
+            messageElement.addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                showMessageActions(message.id, e.clientX, e.clientY);
+            });
+            
+            // Long press for mobile
+            let pressTimer;
+            messageElement.addEventListener('touchstart', (e) => {
+                pressTimer = setTimeout(() => {
+                    const touch = e.touches[0];
+                    showMessageActions(message.id, touch.clientX, touch.clientY);
+                }, 500);
+            });
+            
+            messageElement.addEventListener('touchend', () => {
+                clearTimeout(pressTimer);
+            });
+        }
+        
+        // Double tap or double click for reactions
         messageElement.addEventListener('dblclick', () => {
             showReactionPicker(message.id);
         });
+        
+        // Single tap reaction icon for mobile
+        const reactionIcon = createElement('div', {
+            className: 'message-reaction-icon',
+            innerHTML: '<i class="far fa-smile"></i>',
+            onclick: (e) => {
+                e.stopPropagation();
+                showReactionPicker(message.id);
+            }
+        });
+        
+        messageElement.appendChild(reactionIcon);
     }
     
     // Append to container
     messagesContainer.appendChild(messageElement);
+    
+    // Animate message appearance
+    setTimeout(() => {
+        messageElement.style.opacity = '1';
+        messageElement.style.transform = 'translateY(0)';
+    }, 10);
 }
 
 // Show message actions menu
@@ -643,6 +783,11 @@ function showReactionPicker(messageId) {
         existingMenu.remove();
     }
     
+    const existingPicker = document.querySelector('.reaction-picker');
+    if (existingPicker) {
+        existingPicker.remove();
+    }
+    
     // Find message element
     const messageElement = document.querySelector(`.message[data-id="${messageId}"]`);
     if (!messageElement) return;
@@ -650,52 +795,68 @@ function showReactionPicker(messageId) {
     // Get position for the picker
     const rect = messageElement.getBoundingClientRect();
     
-    // Create reaction picker
-    const menu = createElement('div', { 
-        className: 'message-action-menu',
-        style: {
-            position: 'fixed',
-            top: `${rect.top - 40}px`,
-            left: `${rect.left + (rect.width / 2) - 100}px`,
-            display: 'flex',
-            width: '200px',
-            justifyContent: 'space-around'
-        }
-    }, [
-        createElement('div', { 
-            className: 'message-action-item',
-            onclick: () => reactToMessage(messageId, '👍')
-        }, '👍'),
-        createElement('div', { 
-            className: 'message-action-item',
-            onclick: () => reactToMessage(messageId, '❤️')
-        }, '❤️'),
-        createElement('div', { 
-            className: 'message-action-item',
-            onclick: () => reactToMessage(messageId, '😂')
-        }, '😂'),
-        createElement('div', { 
-            className: 'message-action-item',
-            onclick: () => reactToMessage(messageId, '😮')
-        }, '😮'),
-        createElement('div', { 
-            className: 'message-action-item',
-            onclick: () => reactToMessage(messageId, '😢')
-        }, '😢'),
-        createElement('div', { 
-            className: 'message-action-item text-danger',
-            onclick: () => removeMessageReaction(messageId, getCurrentUser().id)
-        }, '✖')
-    ]);
+    // Create reaction picker div
+    const picker = document.createElement('div');
+    picker.className = 'reaction-picker';
+    
+    // Common emoji reactions
+    const emojis = ['👍', '❤️', '😂', '😮', '😢', '🔥', '👏', '🎉'];
+    
+    // Create emoji buttons
+    emojis.forEach(emoji => {
+        const emojiElement = document.createElement('div');
+        emojiElement.className = 'reaction-picker-emoji';
+        emojiElement.textContent = emoji;
+        emojiElement.setAttribute('data-emoji', emoji);
+        emojiElement.addEventListener('click', () => {
+            reactToMessage(messageId, emoji);
+            picker.remove();
+        });
+        picker.appendChild(emojiElement);
+    });
+    
+    // Add remove reaction button
+    const removeBtn = document.createElement('div');
+    removeBtn.className = 'reaction-picker-emoji';
+    removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+    removeBtn.style.fontSize = '1rem';
+    removeBtn.style.color = '#dc3545';
+    removeBtn.addEventListener('click', () => {
+        removeMessageReaction(messageId, getCurrentUser().id);
+        picker.remove();
+    });
+    picker.appendChild(removeBtn);
     
     // Add to body
-    document.body.appendChild(menu);
+    document.body.appendChild(picker);
+    
+    // Position the picker (after appending to get dimensions)
+    const pickerRect = picker.getBoundingClientRect();
+    picker.style.left = `${rect.left + (rect.width / 2) - (pickerRect.width / 2)}px`;
+    picker.style.top = `${rect.top - pickerRect.height - 10}px`;
+    
+    // Add animation
+    picker.style.animation = 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+    
+    // Add animation keyframes if not already added
+    if (!document.getElementById('pickerAnimations')) {
+        const style = document.createElement('style');
+        style.id = 'pickerAnimations';
+        style.textContent = `
+            @keyframes popIn {
+                0% { opacity: 0; transform: scale(0.5); }
+                70% { opacity: 1; transform: scale(1.1); }
+                100% { opacity: 1; transform: scale(1); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
     
     // Close menu when clicking elsewhere
     setTimeout(() => {
         document.addEventListener('click', function closeMenu(e) {
-            if (!menu.contains(e.target)) {
-                menu.remove();
+            if (!picker.contains(e.target) && e.target !== messageElement) {
+                picker.remove();
                 document.removeEventListener('click', closeMenu);
             }
         });
@@ -764,14 +925,50 @@ function updateMessageReaction(messageId, userId, emoji) {
         messageElement.appendChild(reactionsElement);
     }
     
-    // Update reactions
-    // In a real app, we would maintain a map of user reactions
-    // For simplicity, we'll just set the text content
-    const existingEmojis = reactionsElement.textContent;
+    // Check if reaction already exists
+    const existingReaction = Array.from(reactionsElement.querySelectorAll('.message-reaction'))
+        .find(el => el.getAttribute('data-emoji') === emoji);
     
-    // Check if already contains this emoji
-    if (!existingEmojis.includes(emoji)) {
-        reactionsElement.textContent += emoji;
+    if (existingReaction) {
+        // Update count
+        const countEl = existingReaction.querySelector('.message-reaction-count');
+        if (countEl) {
+            const currentCount = parseInt(countEl.textContent);
+            countEl.textContent = isNaN(currentCount) ? 2 : (currentCount + 1);
+        }
+    } else {
+        // Create new reaction
+        const reactionEl = document.createElement('div');
+        reactionEl.className = 'message-reaction';
+        reactionEl.setAttribute('data-emoji', emoji);
+        reactionEl.innerHTML = `${emoji} <span class="message-reaction-count">1</span>`;
+        
+        // Add click handler to add the same reaction
+        reactionEl.addEventListener('click', () => {
+            reactToMessage(messageId, emoji);
+        });
+        
+        reactionsElement.appendChild(reactionEl);
+    }
+    
+    // Add animation
+    const newReaction = reactionsElement.querySelector(`[data-emoji="${emoji}"]`);
+    if (newReaction) {
+        newReaction.style.animation = 'reactionPop 0.5s ease-out';
+        
+        // Add animation keyframes if not already added
+        if (!document.getElementById('reactionAnimations')) {
+            const style = document.createElement('style');
+            style.id = 'reactionAnimations';
+            style.textContent = `
+                @keyframes reactionPop {
+                    0% { transform: scale(1); }
+                    50% { transform: scale(1.4); }
+                    100% { transform: scale(1); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
     }
 }
 
@@ -786,14 +983,34 @@ function removeMessageReaction(messageId, userId) {
     
     if (!reactionsElement) return;
     
-    // In a real app, we would remove the specific user's reaction
-    // For simplicity, we'll just remove the element if it only has one reaction
-    // or leave it otherwise
-    if (reactionsElement.textContent.length <= 2) {
-        reactionsElement.remove();
+    // For real app, we would have the server send which reaction needs removing
+    // For demo purposes, we'll remove the element with a fade-out animation
+    
+    // Add fade-out animation
+    reactionsElement.style.animation = 'fadeOut 0.3s ease forwards';
+    
+    // Add animation keyframes if not already added
+    if (!document.getElementById('fadeAnimations')) {
+        const style = document.createElement('style');
+        style.id = 'fadeAnimations';
+        style.textContent = `
+            @keyframes fadeOut {
+                from { opacity: 1; transform: translateY(0); }
+                to { opacity: 0; transform: translateY(10px); }
+            }
+        `;
+        document.head.appendChild(style);
     }
     
-    // In a real app with Socket.io, the server would send an updated list of reactions
+    // Actually remove after animation completes
+    setTimeout(() => {
+        reactionsElement.remove();
+    }, 300);
+    
+    // Let server know about reaction removal
+    if (socket) {
+        socket.emit('remove_reaction', { messageId });
+    }
 }
 
 // Scroll to the bottom of the messages container
@@ -861,6 +1078,8 @@ window.addEventListener('resize', () => {
 });
 
 // Setup Send Money Modal
+// Function removed as per requirements - Send coins functionality no longer needed
+/* 
 function setupSendMoneyModal() {
     const sendMoneyBtn = document.getElementById('sendMoneyBtn');
     const sendMoneyModal = document.getElementById('sendMoneyModal');
@@ -978,3 +1197,4 @@ function showSendMoneyModal(userId, username) {
     const bsModal = new bootstrap.Modal(modal);
     bsModal.show();
 }
+*/

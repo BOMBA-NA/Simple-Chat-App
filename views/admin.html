@@ -54,31 +54,173 @@
                     <h2>Admin Dashboard</h2>
                 </div>
                 
+                <!-- Stats Overview Cards -->
                 <div class="row">
-                    <div class="col-md-4 mb-4">
+                    <div class="col-md-3 mb-4">
                         <div class="card dashboard-card">
                             <div class="card-body">
                                 <h5 class="card-title"><i class="fas fa-users"></i> Users</h5>
                                 <h3 id="userCount">0</h3>
                                 <p>Total registered users</p>
+                                <div class="progress mt-2" style="height: 5px;">
+                                    <div class="progress-bar bg-primary" id="userGrowthBar" role="progressbar" style="width: 0%"></div>
+                                </div>
+                                <small class="text-muted" id="userGrowthRate">+0% this week</small>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4 mb-4">
+                    <div class="col-md-3 mb-4">
                         <div class="card dashboard-card">
                             <div class="card-body">
                                 <h5 class="card-title"><i class="fas fa-newspaper"></i> Posts</h5>
                                 <h3 id="postCount">0</h3>
                                 <p>Total posts created</p>
+                                <div class="progress mt-2" style="height: 5px;">
+                                    <div class="progress-bar bg-success" id="postGrowthBar" role="progressbar" style="width: 0%"></div>
+                                </div>
+                                <small class="text-muted" id="postGrowthRate">+0% this week</small>
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-4 mb-4">
+                    <div class="col-md-3 mb-4">
                         <div class="card dashboard-card">
                             <div class="card-body">
                                 <h5 class="card-title"><i class="fas fa-comments"></i> Messages</h5>
                                 <h3 id="messageCount">0</h3>
                                 <p>Total messages sent</p>
+                                <div class="progress mt-2" style="height: 5px;">
+                                    <div class="progress-bar bg-info" id="messageGrowthBar" role="progressbar" style="width: 0%"></div>
+                                </div>
+                                <small class="text-muted" id="messageGrowthRate">+0% this week</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-4">
+                        <div class="card dashboard-card">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-gamepad"></i> Games</h5>
+                                <h3 id="gameCount">0</h3>
+                                <p>Pet battles played</p>
+                                <div class="progress mt-2" style="height: 5px;">
+                                    <div class="progress-bar bg-warning" id="gameGrowthBar" role="progressbar" style="width: 0%"></div>
+                                </div>
+                                <small class="text-muted" id="gameGrowthRate">+0% this week</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Advanced Analytics Section -->
+                <div class="row">
+                    <!-- User Activity Graph -->
+                    <div class="col-md-8 mb-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Platform Activity</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="d-flex mb-3">
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" class="btn btn-outline-primary active" id="weekViewBtn">Week</button>
+                                        <button type="button" class="btn btn-outline-primary" id="monthViewBtn">Month</button>
+                                    </div>
+                                </div>
+                                <div id="activityChart" style="height: 300px;">
+                                    <!-- Canvas for chart will be inserted here -->
+                                    <div class="d-flex justify-content-center align-items-center h-100">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- User Distribution -->
+                    <div class="col-md-4 mb-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">User Distribution</h5>
+                            </div>
+                            <div class="card-body">
+                                <div id="userDistributionChart" style="height: 300px;">
+                                    <!-- Canvas for chart will be inserted here -->
+                                    <div class="d-flex justify-content-center align-items-center h-100">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Recent Activity and System Health -->
+                <div class="row">
+                    <!-- Recent Activity -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="card-title mb-0">Recent Activity</h5>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="list-group list-group-flush" id="recentActivityList">
+                                    <div class="list-group-item d-flex justify-content-center">
+                                        <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                            <span class="visually-hidden">Loading...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- System Health -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="card-title mb-0">System Health</h5>
+                                <span class="badge bg-success">Online</span>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label d-flex justify-content-between">
+                                        <span>Server CPU</span>
+                                        <span id="cpuUsage">25%</span>
+                                    </label>
+                                    <div class="progress" style="height: 10px;">
+                                        <div class="progress-bar bg-success" id="cpuBar" role="progressbar" style="width: 25%"></div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label d-flex justify-content-between">
+                                        <span>Memory Usage</span>
+                                        <span id="memoryUsage">40%</span>
+                                    </label>
+                                    <div class="progress" style="height: 10px;">
+                                        <div class="progress-bar bg-info" id="memoryBar" role="progressbar" style="width: 40%"></div>
+                                    </div>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label d-flex justify-content-between">
+                                        <span>Database Connections</span>
+                                        <span id="dbConnections">10/50</span>
+                                    </label>
+                                    <div class="progress" style="height: 10px;">
+                                        <div class="progress-bar bg-primary" id="dbBar" role="progressbar" style="width: 20%"></div>
+                                    </div>
+                                </div>
+                                <div class="mb-0">
+                                    <label class="form-label d-flex justify-content-between">
+                                        <span>Active Websockets</span>
+                                        <span id="socketCount">25</span>
+                                    </label>
+                                    <div class="progress" style="height: 10px;">
+                                        <div class="progress-bar bg-warning" id="socketBar" role="progressbar" style="width: 50%"></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

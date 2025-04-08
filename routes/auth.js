@@ -26,6 +26,23 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'All fields are required' });
     }
     
+    // Check if username is restricted
+    const restrictedUsernames = [
+      'admin', 'Admin', 'ADMIN', 'administrator', 'Administrator',
+      'owner', 'Owner', 'OWNER',
+      'developer', 'Developer', 'DEVELOPER',
+      'moderator', 'Moderator', 'MODERATOR',
+      'system', 'System', 'SYSTEM'
+    ];
+    
+    // Check if username includes restricted words
+    const lowercaseUsername = username.toLowerCase();
+    if (restrictedUsernames.some(restrictedName => lowercaseUsername === restrictedName.toLowerCase())) {
+      return res.status(400).json({ 
+        message: 'This username is not allowed. Please choose a different username.' 
+      });
+    }
+    
     // Check if email already exists
     const existingUser = await db.users.findByEmail(email);
     if (existingUser) {
@@ -41,7 +58,7 @@ router.post('/register', async (req, res) => {
       username,
       email,
       password: hashedPassword,
-      role: 'user'
+      role: email === 'admin@arcadetalk.com' ? 'admin' : 'user' // Only admin@arcadetalk.com can be admin
     });
     
     // Generate JWT token
