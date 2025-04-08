@@ -152,6 +152,14 @@ async function fetchWithAuth(url, options = {}) {
     const data = await response.json();
     
     if (!response.ok) {
+        // Handle 404 for user not found specifically
+        if (response.status === 404 && url.includes('/api/users/') && data.message === 'User not found') {
+            console.warn(`User not found: ${data.userId || 'Unknown ID'}`);
+            // Optionally redirect or handle gracefully
+            // Instead of throwing, we could return a default value or empty object
+            return { user: null, notFound: true };
+        }
+        
         throw {
             status: response.status,
             message: data.message || 'An error occurred',

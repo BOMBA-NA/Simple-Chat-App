@@ -87,6 +87,7 @@ const userMethods = {
           isOnline: isOnlineNow 
         };
       }
+      console.log('User not found with ID:', id);
       return null;
     } catch (error) {
       console.error('Error finding user by ID:', error);

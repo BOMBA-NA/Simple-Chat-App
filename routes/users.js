@@ -25,10 +25,12 @@ router.get('/', authMiddleware.verifyToken, authMiddleware.isAdmin, async (req, 
 // Get user profile by ID
 router.get('/:id', authMiddleware.verifyToken, async (req, res) => {
   try {
-    const user = await db.users.findById(req.params.id);
+    const userId = req.params.id;
+    const user = await db.users.findById(userId);
     
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      console.log(`API request for non-existent user: ${userId}`);
+      return res.status(404).json({ message: 'User not found', userId });
     }
     
     return res.json({ user });
