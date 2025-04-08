@@ -25,6 +25,15 @@
                         <li class="nav-item">
                             <a class="nav-link" href="/home"><i class="fas fa-home"></i> Back to App</a>
                         </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#dashboardSection" id="dashboardTabAdmin"><i class="fas fa-tachometer-alt"></i> Dashboard</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#usersSection" id="usersTabAdmin"><i class="fas fa-users"></i> Users</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#postsSection" id="postsTabAdmin"><i class="fas fa-newspaper"></i> Posts</a>
+                        </li>
                     </ul>
                     <ul class="navbar-nav ms-auto">
                         <li class="nav-item">
@@ -39,7 +48,8 @@
 
         <!-- Main Content -->
         <div class="content-container">
-            <div class="admin-dashboard">
+            <!-- Dashboard Section -->
+            <div class="section active" id="dashboardSection">
                 <div class="section-header">
                     <h2>Admin Dashboard</h2>
                 </div>
@@ -73,12 +83,15 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            
+            <!-- Users Management Section -->
+            <div class="section" id="usersSection">
+                <div class="section-header">
+                    <h2>User Management</h2>
+                </div>
                 
-                <!-- Users Management -->
                 <div class="card">
-                    <div class="card-header">
-                        <h5>User Management</h5>
-                    </div>
                     <div class="card-body">
                         <div class="table-responsive">
                             <table class="table table-striped">
@@ -107,12 +120,15 @@
                         </div>
                     </div>
                 </div>
+            </div>
+            
+            <!-- Posts Management Section -->
+            <div class="section" id="postsSection">
+                <div class="section-header">
+                    <h2>Content Moderation</h2>
+                </div>
                 
-                <!-- Content Moderation -->
-                <div class="card mt-4">
-                    <div class="card-header">
-                        <h5>Content Moderation</h5>
-                    </div>
+                <div class="card">
                     <div class="card-body">
                         <div class="table-responsive">
                             <table class="table table-striped">

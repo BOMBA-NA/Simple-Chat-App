@@ -21,38 +21,65 @@ function showToast(title, message, duration = 3000) {
 
 // Format date for display
 function formatDate(dateString) {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffSec = Math.floor(diffMs / 1000);
-    const diffMin = Math.floor(diffSec / 60);
-    const diffHour = Math.floor(diffMin / 60);
-    const diffDay = Math.floor(diffHour / 24);
+    // Check if dateString is valid
+    if (!dateString) return 'unknown date';
     
-    if (diffSec < 60) {
-        return 'just now';
-    } else if (diffMin < 60) {
-        return `${diffMin} minute${diffMin > 1 ? 's' : ''} ago`;
-    } else if (diffHour < 24) {
-        return `${diffHour} hour${diffHour > 1 ? 's' : ''} ago`;
-    } else if (diffDay < 7) {
-        return `${diffDay} day${diffDay > 1 ? 's' : ''} ago`;
-    } else {
-        return date.toLocaleDateString('en-US', {
-            year: 'numeric',
-            month: 'short',
-            day: 'numeric'
-        });
+    try {
+        const date = new Date(dateString);
+        
+        // Check if date is valid
+        if (isNaN(date.getTime())) {
+            return 'invalid date';
+        }
+        
+        const now = new Date();
+        const diffMs = now - date;
+        const diffSec = Math.floor(diffMs / 1000);
+        const diffMin = Math.floor(diffSec / 60);
+        const diffHour = Math.floor(diffMin / 60);
+        const diffDay = Math.floor(diffHour / 24);
+        
+        if (diffSec < 60) {
+            return 'just now';
+        } else if (diffMin < 60) {
+            return `${diffMin} minute${diffMin > 1 ? 's' : ''} ago`;
+        } else if (diffHour < 24) {
+            return `${diffHour} hour${diffHour > 1 ? 's' : ''} ago`;
+        } else if (diffDay < 7) {
+            return `${diffDay} day${diffDay > 1 ? 's' : ''} ago`;
+        } else {
+            return date.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            });
+        }
+    } catch (error) {
+        console.error('Error formatting date:', error);
+        return 'date error';
     }
 }
 
 // Format time for display in chat
 function formatTime(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit'
-    });
+    if (!dateString) return 'unknown time';
+    
+    try {
+        const date = new Date(dateString);
+        
+        // Check if date is valid
+        if (isNaN(date.getTime())) {
+            return 'invalid time';
+        }
+        
+        return date.toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    } catch (error) {
+        console.error('Error formatting time:', error);
+        return 'time error';
+    }
 }
 
 // Get current user from localStorage
@@ -180,29 +207,36 @@ function escapeHtml(html) {
 // Setup logout functionality
 function setupLogout() {
     const logoutBtn = document.getElementById('logoutBtn');
+    const mobileLogoutBtn = document.getElementById('mobileLogoutBtn');
+    
+    const handleLogout = async (e) => {
+        e.preventDefault();
+        
+        try {
+            await fetchWithAuth('/api/auth/logout', {
+                method: 'POST'
+            });
+            
+            // Clear local storage
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            
+            // Redirect to login page
+            window.location.href = '/';
+        } catch (error) {
+            // Even if the API call fails, log out the user locally
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = '/';
+        }
+    };
     
     if (logoutBtn) {
-        logoutBtn.addEventListener('click', async (e) => {
-            e.preventDefault();
-            
-            try {
-                await fetchWithAuth('/api/auth/logout', {
-                    method: 'POST'
-                });
-                
-                // Clear local storage
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                
-                // Redirect to login page
-                window.location.href = '/';
-            } catch (error) {
-                // Even if the API call fails, log out the user locally
-                localStorage.removeItem('token');
-                localStorage.removeItem('user');
-                window.location.href = '/';
-            }
-        });
+        logoutBtn.addEventListener('click', handleLogout);
+    }
+    
+    if (mobileLogoutBtn) {
+        mobileLogoutBtn.addEventListener('click', handleLogout);
     }
 }
 

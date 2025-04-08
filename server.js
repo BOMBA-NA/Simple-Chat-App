@@ -13,7 +13,6 @@ const cookieParser = require('cookie-parser');
 const authRoutes = require('./routes/auth');
 const usersRoutes = require('./routes/users');
 const postsRoutes = require('./routes/posts');
-const paymentsRoutes = require('./routes/payments');
 
 // Socket handlers
 const chatSocket = require('./socket/chat');
@@ -43,7 +42,6 @@ app.use(cookieParser());
 app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/posts', postsRoutes);
-app.use('/api/payments', paymentsRoutes);
 
 // Serve HTML files
 app.get('/', (req, res) => {
@@ -64,10 +62,6 @@ app.get('/reset-password', (req, res) => {
 
 app.get('/home', authMiddleware.verifyToken, (req, res) => {
   res.sendFile(path.join(__dirname, 'views/index.html'));
-});
-
-app.get('/payment-success', authMiddleware.verifyToken, (req, res) => {
-  res.sendFile(path.join(__dirname, 'views/payment-success.html'));
 });
 
 app.get('/admin', authMiddleware.verifyToken, authMiddleware.isAdmin, (req, res) => {

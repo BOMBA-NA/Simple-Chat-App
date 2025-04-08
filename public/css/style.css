@@ -170,10 +170,16 @@ a:hover {
 .section {
     display: none;
     padding-bottom: 70px; /* Space for mobile navigation */
+    animation: fadeIn 0.5s ease;
 }
 
 .section.active {
     display: block;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .section-header {
@@ -627,6 +633,7 @@ a:hover {
     position: relative;
     border-radius: 8px;
     margin: 0 2px;
+    max-width: 20%;
 }
 
 .mobile-nav-item i {
@@ -670,6 +677,11 @@ a:hover {
     top: 0;
     right: 5px;
     font-size: 0.6rem;
+}
+
+.mobile-nav-item .notification-badge {
+    top: 8px;
+    right: 25%;
 }
 
 .notification-item {

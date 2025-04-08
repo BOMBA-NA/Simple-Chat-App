@@ -628,83 +628,94 @@ async function deleteComment(postId, commentId) {
 // Setup notifications modal
 function setupNotifications() {
     const notificationsBtn = document.getElementById('notificationsBtn');
+    const mobileNotificationsBtn = document.getElementById('mobileNotificationsBtn');
     const notificationsModal = document.getElementById('notificationsModal');
     const notificationsContainer = document.getElementById('notificationsContainer');
     const markAllReadBtn = document.getElementById('markAllReadBtn');
     const emptyNotifications = document.getElementById('emptyNotifications');
     
-    if (notificationsBtn && notificationsModal) {
-        notificationsBtn.addEventListener('click', async (e) => {
+    // Function to handle notification button clicks (desktop and mobile)
+    const handleNotificationsClick = (e) => {
+        if (e) {
             e.preventDefault();
-            
-            // Show modal
-            const modal = new bootstrap.Modal(notificationsModal);
-            modal.show();
-            
-            // Load notifications
-            if (notificationsContainer) {
-                notificationsContainer.innerHTML = `
-                    <div class="loading-spinner">
-                        <div class="spinner-border text-primary" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                    </div>
-                `;
-                
-                // Get notifications via socket
-                if (socket) {
-                    socket.emit('get_notifications', {}, (response) => {
-                        if (response.success) {
-                            notificationsContainer.innerHTML = '';
-                            
-                            if (response.notifications && response.notifications.length > 0) {
-                                if (emptyNotifications) {
-                                    emptyNotifications.style.display = 'none';
-                                }
-                                
-                                response.notifications.forEach(notification => {
-                                    const notificationElement = createNotificationElement(notification);
-                                    notificationsContainer.appendChild(notificationElement);
-                                });
-                            } else {
-                                if (emptyNotifications) {
-                                    emptyNotifications.style.display = 'block';
-                                }
-                            }
-                        } else {
-                            notificationsContainer.innerHTML = `
-                                <div class="text-center p-3">
-                                    <p>Error loading notifications. Please try again later.</p>
-                                </div>
-                            `;
-                        }
-                    });
-                }
-            }
-        });
+        }
         
-        // Handle mark all as read button
-        if (markAllReadBtn && socket) {
-            markAllReadBtn.addEventListener('click', () => {
-                socket.emit('mark_all_notifications_read', {}, (response) => {
-                    if (response.success) {
-                        // Update UI
-                        const unreadNotifications = notificationsContainer.querySelectorAll('.notification-item.unread');
-                        unreadNotifications.forEach(item => {
-                            item.classList.remove('unread');
-                        });
+        // Show modal
+        const modal = new bootstrap.Modal(notificationsModal);
+        modal.show();
+        
+        // Load notifications
+        if (notificationsContainer) {
+            notificationsContainer.innerHTML = `
+                <div class="loading-spinner">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            `;
+            
+            // Get notifications via socket
+            if (socket) {
+                socket.emit('get_notifications', {}, (response) => {
+                    if (response.success && response.notifications) {
+                        notificationsContainer.innerHTML = '';
                         
-                        // Update badge
-                        const badge = document.getElementById('notificationBadge');
-                        if (badge) {
-                            badge.style.display = 'none';
+                        if (response.notifications.length > 0) {
+                            if (emptyNotifications) {
+                                emptyNotifications.style.display = 'none';
+                            }
+                            
+                            response.notifications.forEach(notification => {
+                                const notificationElement = createNotificationElement(notification);
+                                notificationsContainer.appendChild(notificationElement);
+                            });
+                        } else {
+                            if (emptyNotifications) {
+                                emptyNotifications.style.display = 'block';
+                            }
                         }
-                        
-                        showToast('Success', 'All notifications marked as read');
+                    } else {
+                        notificationsContainer.innerHTML = `
+                            <div class="text-center p-3">
+                                <p>Error loading notifications. Please try again later.</p>
+                            </div>
+                        `;
                     }
                 });
-            });
+            }
         }
+    };
+    
+    // Make handleNotificationsClick available globally
+    window.handleNotificationsClick = handleNotificationsClick;
+    
+    // Add click handlers to notification buttons
+    if (notificationsBtn) {
+        notificationsBtn.addEventListener('click', handleNotificationsClick);
+    }
+    
+    if (mobileNotificationsBtn) {
+        mobileNotificationsBtn.addEventListener('click', handleNotificationsClick);
+    }
+    
+    // Handle mark all as read button
+    if (markAllReadBtn && socket) {
+        markAllReadBtn.addEventListener('click', () => {
+            socket.emit('mark_all_notifications_read', {}, (response) => {
+                if (response.success) {
+                    // Update UI
+                    const unreadNotifications = notificationsContainer.querySelectorAll('.notification-item.unread');
+                    unreadNotifications.forEach(item => {
+                        item.classList.remove('unread');
+                    });
+                    
+                    // Update badges with the unified function
+                    updateNotificationBadge();
+                    
+                    showToast('Success', 'All notifications marked as read');
+                }
+            });
+        });
     }
 }
 

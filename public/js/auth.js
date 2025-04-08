@@ -140,13 +140,25 @@ function updateNotificationBadge() {
         if (response.success) {
             const unreadCount = response.notifications.filter(n => !n.isRead).length;
             const badge = document.getElementById('notificationBadge');
+            const mobileBadge = document.getElementById('mobileNotificationBadge');
             
+            // Update desktop badge
             if (badge) {
                 if (unreadCount > 0) {
                     badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
                     badge.style.display = 'inline';
                 } else {
                     badge.style.display = 'none';
+                }
+            }
+            
+            // Update mobile badge
+            if (mobileBadge) {
+                if (unreadCount > 0) {
+                    mobileBadge.textContent = unreadCount > 99 ? '99+' : unreadCount;
+                    mobileBadge.style.display = 'inline';
+                } else {
+                    mobileBadge.style.display = 'none';
                 }
             }
         }

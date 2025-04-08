@@ -16,6 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialize Admin Dashboard
     setupAdminDashboard();
     setupLogout();
+    setupAdminNavigation();
 });
 
 // Setup the admin dashboard
@@ -240,9 +241,12 @@ function showEditUserModal(userId, users) {
     const user = users.find(u => u.id === userId);
     
     if (!user) {
-        showToast('Error', 'User not found');
+        console.error('User not found with ID:', userId);
+        showToast('Error', 'User not found. Please refresh the page and try again.');
         return;
     }
+    
+    console.log('Editing user:', user);
     
     // Get modal elements
     const userModal = document.getElementById('userModal');
@@ -253,11 +257,11 @@ function showEditUserModal(userId, users) {
     const saveBtn = document.getElementById('saveUserBtn');
     const deleteBtn = document.getElementById('deleteUserBtn');
     
-    // Populate form
-    if (userIdInput) userIdInput.value = user.id;
-    if (usernameInput) usernameInput.value = user.username;
-    if (roleSelect) roleSelect.value = user.role;
-    if (balanceInput) balanceInput.value = user.balance;
+    // Populate form with safe defaults if data is missing
+    if (userIdInput) userIdInput.value = user.id || '';
+    if (usernameInput) usernameInput.value = user.username || '';
+    if (roleSelect) roleSelect.value = user.role || 'user';
+    if (balanceInput) balanceInput.value = user.balance || 0;
     
     // Set up save button
     if (saveBtn) {
@@ -279,7 +283,11 @@ function showEditUserModal(userId, users) {
         
         // Add new event handler
         newDeleteBtn.addEventListener('click', () => {
-            deleteUser(user.id, userModal);
+            if (user && user.id) {
+                deleteUser(user.id, userModal);
+            } else {
+                showToast('Error', 'Cannot delete user: Missing user ID');
+            }
         });
     }
     
@@ -409,4 +417,51 @@ async function deletePost(postId) {
         console.error('Error deleting post:', error);
         showToast('Error', 'Failed to delete post: ' + (error.message || 'Unknown error'));
     }
+}
+
+// Setup admin panel navigation
+function setupAdminNavigation() {
+    const sections = document.querySelectorAll('.section');
+    const navLinks = document.querySelectorAll('.nav-link');
+    
+    // Function to switch sections
+    function switchAdminSection(sectionId) {
+        console.log(`Switching to admin section: ${sectionId}`);
+        
+        // Hide all sections
+        sections.forEach(section => {
+            section.classList.remove('active');
+        });
+        
+        // Show the selected section
+        const sectionToShow = document.getElementById(sectionId);
+        if (sectionToShow) {
+            sectionToShow.classList.add('active');
+        }
+        
+        // Update active state in navigation
+        navLinks.forEach(link => {
+            if (link.getAttribute('href') === `#${sectionId}`) {
+                link.classList.add('active');
+            } else {
+                link.classList.remove('active');
+            }
+        });
+    }
+    
+    // Add click handlers to navigation links
+    navLinks.forEach(link => {
+        const href = link.getAttribute('href');
+        
+        // Skip links that are not section links
+        if (!href || !href.startsWith('#') || href === '#') {
+            return;
+        }
+        
+        link.addEventListener('click', (e) => {
+            e.preventDefault();
+            const sectionId = href.substring(1); // Remove the # character
+            switchAdminSection(sectionId);
+        });
+    });
 }
