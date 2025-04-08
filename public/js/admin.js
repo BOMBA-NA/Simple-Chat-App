@@ -313,6 +313,9 @@ async function saveUserChanges(modalElement) {
         
         const data = await fetchWithAuth(`/api/users/admin/update/${userId}`, {
             method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
             body: JSON.stringify({
                 username,
                 role,

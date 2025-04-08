@@ -255,18 +255,43 @@ function setupMobileNav() {
                 link.classList.remove('active');
             }
         });
+        
+        // Special handling for chat section
+        if (sectionId === 'chatSection') {
+            // Trigger a resize event to help chat interface adjust
+            window.dispatchEvent(new Event('resize'));
+            
+            // If chat.js has initialized the chat layout, refresh it
+            if (typeof refreshChatLayout === 'function') {
+                refreshChatLayout();
+            }
+        }
     }
     
     // Set up mobile nav item click events
     mobileNavItems.forEach(item => {
-        if (item.querySelector('a')) {
-            // Skip items with direct links (like admin link)
+        // For items with an anchor tag but not actually leaving the page,
+        // we still want to handle the click
+        const anchor = item.querySelector('a');
+        if (anchor && anchor.getAttribute('href') && 
+            (anchor.getAttribute('href') === '#' || 
+             anchor.getAttribute('href').startsWith('#'))) {
+            
+            anchor.addEventListener('click', (e) => {
+                e.preventDefault();
+            });
+        }
+        
+        // Only skip if it's a full page navigation (like to admin page)
+        if (item.querySelector('a[href^="/"]')) {
             return;
         }
         
         item.addEventListener('click', () => {
             const sectionId = item.dataset.section;
-            switchSection(sectionId);
+            if (sectionId) {
+                switchSection(sectionId);
+            }
         });
     });
     

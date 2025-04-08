@@ -39,6 +39,8 @@ function setupChat() {
         chatTab.addEventListener('click', (e) => {
             e.preventDefault();
             loadRecentChats();
+            // Refresh chat layout after a small delay to ensure DOM is ready
+            setTimeout(() => refreshChatLayout(), 100);
         });
     }
     
@@ -47,6 +49,8 @@ function setupChat() {
     if (chatNavItem) {
         chatNavItem.addEventListener('click', () => {
             loadRecentChats();
+            // Refresh chat layout after a small delay to ensure DOM is ready
+            setTimeout(() => refreshChatLayout(), 100);
         });
     }
     
@@ -395,6 +399,9 @@ function openChat(chat) {
     const emptyChatPlaceholder = document.getElementById('emptyChatPlaceholder');
     const chatInterface = document.getElementById('chatInterface');
     const typingIndicator = document.getElementById('typingIndicator');
+    
+    // Refresh layout for proper sizing, especially on mobile
+    setTimeout(() => refreshChatLayout(), 100); // Small delay to ensure DOM is updated
     
     // Update chat header
     if (chatUserAvatar && chatUsername) {
@@ -798,6 +805,61 @@ function scrollToBottom() {
     }
 }
 
+// Refresh chat layout when switching to chat section or on resize
+function refreshChatLayout() {
+    // Adjust container heights for mobile views
+    const isMobile = window.innerWidth <= 768;
+    const chatContainer = document.getElementById('chatContainer');
+    const messagesContainer = document.getElementById('messagesContainer');
+    const chatHeader = document.querySelector('.chat-header');
+    const chatInputContainer = document.querySelector('.chat-input-container');
+    const chatList = document.getElementById('chatList');
+    
+    if (!chatContainer) return;
+    
+    if (isMobile) {
+        // For mobile: adjust heights accordingly
+        if (messagesContainer && chatHeader && chatInputContainer) {
+            const containerHeight = chatContainer.clientHeight;
+            const headerHeight = chatHeader.clientHeight || 56; // Default height if not yet rendered
+            const inputHeight = chatInputContainer.clientHeight || 70; // Default height if not yet rendered
+            const availableHeight = containerHeight - headerHeight - inputHeight;
+            
+            if (availableHeight > 100) { // Sanity check
+                messagesContainer.style.height = `${availableHeight}px`;
+            }
+        }
+        
+        // Ensure the chat list takes appropriate height
+        if (chatList) {
+            chatList.style.maxHeight = '160px';
+        }
+    } else {
+        // For desktop: reset to CSS defaults
+        if (messagesContainer) {
+            messagesContainer.style.height = '';
+        }
+        if (chatList) {
+            chatList.style.maxHeight = '';
+        }
+    }
+    
+    // Always scroll to bottom after layout refresh if we have an active chat
+    if (activeChat) {
+        scrollToBottom();
+    }
+    
+    console.log('Chat layout refreshed');
+}
+
+// Add window resize listener to adapt chat layout
+window.addEventListener('resize', () => {
+    if (document.getElementById('chatSection') && 
+        document.getElementById('chatSection').classList.contains('active')) {
+        refreshChatLayout();
+    }
+});
+
 // Setup Send Money Modal
 function setupSendMoneyModal() {
     const sendMoneyBtn = document.getElementById('sendMoneyBtn');
@@ -890,4 +952,29 @@ function setupSendMoneyModal() {
             }
         });
     }
+}
+
+// Function to display the send money modal
+function showSendMoneyModal(userId, username) {
+    const modal = document.getElementById('sendMoneyModal');
+    if (!modal) return;
+    
+    // Set receiver info
+    document.getElementById('recipientName').textContent = username;
+    
+    // Store user ID for later use
+    modal.setAttribute('data-receiver-id', userId);
+    
+    // Set current balance
+    const currentUser = getCurrentUser();
+    if (currentUser) {
+        document.getElementById('senderBalance').textContent = currentUser.balance;
+    }
+    
+    // Reset amount field
+    document.getElementById('transferAmount').value = '';
+    
+    // Show modal
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
 }
