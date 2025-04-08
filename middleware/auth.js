@@ -5,7 +5,7 @@ const db = require('../models/database');
 const JWT_SECRET = process.env.JWT_SECRET || 'your_jwt_secret';
 
 // Verify JWT token middleware
-const verifyToken = (req, res, next) => {
+const verifyToken = async (req, res, next) => {
   const token = req.cookies.token || req.header('Authorization')?.replace('Bearer ', '');
   
   if (!token) {
@@ -15,8 +15,8 @@ const verifyToken = (req, res, next) => {
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     
-    // Check if user exists in database
-    const user = db.users.findById(decoded.id);
+    // Check if user exists in database - use await for async findById
+    const user = await db.users.findById(decoded.id);
     if (!user) {
       return res.status(401).json({ message: 'User not found' });
     }

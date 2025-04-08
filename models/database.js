@@ -734,11 +734,44 @@ const notificationMethods = {
   }
 };
 
+// Function to directly update a user's balance
+const updateUserBalance = async (userId, newBalance) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      userId,
+      { balance: newBalance },
+      { new: true }
+    );
+    
+    if (!user) {
+      return { success: false, message: 'User not found' };
+    }
+    
+    return { success: true, user: user.toObject(), newBalance };
+  } catch (error) {
+    console.error('Error updating user balance:', error);
+    return { success: false, message: 'Database error' };
+  }
+};
+
+// Function to directly find a user by ID
+const findUserById = async (userId) => {
+  try {
+    const user = await User.findById(userId);
+    return user;
+  } catch (error) {
+    console.error('Error finding user by ID:', error);
+    return null;
+  }
+};
+
 module.exports = {
   users: userMethods,
   posts: postMethods,
   comments: commentMethods,
   chat: chatMethods,
   notifications: notificationMethods,
-  createAdminUser: createAdminUser
+  createAdminUser: createAdminUser,
+  updateUserBalance: updateUserBalance,
+  findUserById: findUserById
 };

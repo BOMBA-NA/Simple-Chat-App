@@ -953,3 +953,87 @@ a:hover {
     letter-spacing: 1px;
     margin: 0;
 }
+
+/* Premium Section Styles */
+.premium-container {
+    padding: 15px;
+}
+
+.premium-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.premium-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.premium-membership {
+    border: 2px solid gold;
+}
+
+.price-tag {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin-bottom: 15px;
+}
+
+.premium-btn {
+    width: 100%;
+    font-weight: bold;
+    padding: 10px;
+    transition: all 0.3s ease;
+}
+
+.premium-btn:hover {
+    transform: scale(1.05);
+}
+
+/* Payment Styles */
+#payment-element {
+    margin-bottom: 24px;
+}
+
+#payment-element-container {
+    padding: 10px 0;
+}
+
+#payment-message {
+    color: var(--error-color);
+    font-size: 0.9rem;
+    margin-top: 10px;
+    text-align: center;
+    display: none;
+}
+
+#payment-message.visible {
+    display: block;
+}
+
+.package-details {
+    text-align: center;
+    padding: 15px;
+    background-color: var(--background-color);
+    border-radius: 8px;
+}
+
+.package-name {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
+.package-price {
+    font-size: 1.5rem;
+    color: var(--primary-color);
+}
+
+/* Success Page Styles */
+.success-icon {
+    font-size: 5rem;
+    color: var(--success-color);
+    margin-bottom: 20px;
+}

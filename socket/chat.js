@@ -17,7 +17,7 @@ module.exports = (io, socket) => {
       }
       
       // Check if receiver exists
-      const receiver = db.users.findById(receiverId);
+      const receiver = await db.users.findById(receiverId);
       if (!receiver) {
         return callback({ 
           success: false, 
@@ -26,14 +26,14 @@ module.exports = (io, socket) => {
       }
       
       // Create and save the message
-      const message = db.chat.createMessage({
+      const message = await db.chat.createMessage({
         senderId: socket.user.id,
         receiverId,
         content
       });
       
       // Create notification for receiver
-      db.notifications.create({
+      await db.notifications.create({
         userId: receiverId,
         type: 'message',
         content: `New message from ${socket.user.username}`,
@@ -41,7 +41,7 @@ module.exports = (io, socket) => {
       });
       
       // Add sender info to the message
-      const sender = db.users.findById(socket.user.id);
+      const sender = await db.users.findById(socket.user.id);
       const enhancedMessage = {
         ...message,
         sender: {
@@ -85,20 +85,27 @@ module.exports = (io, socket) => {
       }
       
       // Get messages between the two users
-      const messages = db.chat.getMessages(socket.user.id, userId);
+      const messages = await db.chat.getMessages(socket.user.id, userId);
+      
+      // Ensure messages is an array
+      const messagesArray = Array.isArray(messages) ? messages : [];
       
       // Enhance messages with sender info
-      const enhancedMessages = messages.map(message => {
-        const sender = db.users.findById(message.senderId);
+      const enhancedMessages = await Promise.all(messagesArray.map(async (message) => {
+        const sender = await db.users.findById(message.senderId);
         return {
           ...message,
-          sender: {
+          sender: sender ? {
             id: sender.id,
             username: sender.username,
             avatar: sender.avatar
+          } : {
+            id: message.senderId,
+            username: 'Unknown User',
+            avatar: ''
           }
         };
-      });
+      }));
       
       callback({ 
         success: true, 
@@ -108,7 +115,8 @@ module.exports = (io, socket) => {
       console.error('Get chat history error:', error);
       callback({ 
         success: false, 
-        message: 'Error retrieving chat history' 
+        message: 'Error retrieving chat history',
+        messages: []
       });
     }
   });
@@ -125,8 +133,8 @@ module.exports = (io, socket) => {
         });
       }
       
-      // Delete the message
-      const deletedMessage = db.chat.deleteMessage(messageId, socket.user.id);
+      // Delete the message with await
+      const deletedMessage = await db.chat.deleteMessage(messageId, socket.user.id);
       
       if (!deletedMessage) {
         return callback({ 
@@ -165,7 +173,7 @@ module.exports = (io, socket) => {
       }
       
       // Add reaction to the message
-      const updatedMessage = db.chat.addReaction(messageId, socket.user.id, emoji);
+      const updatedMessage = await db.chat.addReaction(messageId, socket.user.id, emoji);
       
       if (!updatedMessage) {
         return callback({ 
@@ -193,7 +201,7 @@ module.exports = (io, socket) => {
       
       // Create notification if reacting to someone else's message
       if (updatedMessage.senderId !== socket.user.id) {
-        db.notifications.create({
+        await db.notifications.create({
           userId: updatedMessage.senderId,
           type: 'reaction',
           content: `${socket.user.username} reacted to your message with ${emoji}`,
@@ -234,7 +242,7 @@ module.exports = (io, socket) => {
       }
       
       // Remove reaction from the message
-      const updatedMessage = db.chat.removeReaction(messageId, socket.user.id);
+      const updatedMessage = await db.chat.removeReaction(messageId, socket.user.id);
       
       if (!updatedMessage) {
         return callback({ 
@@ -274,14 +282,23 @@ module.exports = (io, socket) => {
   // Get recent chats
   socket.on('get_recent_chats', async (data, callback) => {
     try {
-      const recentChats = db.chat.getRecentChats(socket.user.id);
+      // Get recent chats for the user (with await)
+      const recentChats = await db.chat.getRecentChats(socket.user.id);
       
-      // Get all available users for chat
-      const allUsers = db.users.getAll().filter(user => user.id !== socket.user.id);
+      // Get all available users for chat (with await)
+      const allUsers = await db.users.getAll();
+      
+      // Ensure allUsers is an array and filter out current user
+      const filteredUsers = Array.isArray(allUsers) 
+        ? allUsers.filter(user => user && user.id && user.id !== socket.user.id) 
+        : [];
+      
+      // Ensure recentChats is an array
+      const chatsArray = Array.isArray(recentChats) ? recentChats : [];
       
       // Enhance each chat with online status and admin badge
-      const enhancedChats = recentChats.map(chat => {
-        const user = allUsers.find(u => u.id === chat.userId);
+      const enhancedChats = chatsArray.map(chat => {
+        const user = filteredUsers.find(u => u.id && chat.userId && u.id.toString() === chat.userId.toString());
         return {
           ...chat,
           isOnline: user ? user.isOnline : false,
@@ -294,7 +311,7 @@ module.exports = (io, socket) => {
       callback({ 
         success: true, 
         chats: enhancedChats,
-        availableUsers: allUsers.map(user => ({
+        availableUsers: filteredUsers.map(user => ({
           id: user.id,
           username: user.username,
           displayName: user.displayName || user.username,
@@ -310,7 +327,9 @@ module.exports = (io, socket) => {
       console.error('Get recent chats error:', error);
       callback({ 
         success: false, 
-        message: 'Error retrieving recent chats' 
+        message: 'Error retrieving recent chats',
+        chats: [],
+        availableUsers: []
       });
     }
   });

@@ -4,17 +4,21 @@ module.exports = (io, socket) => {
   // Get notifications for the current user
   socket.on('get_notifications', async (data, callback) => {
     try {
-      const notifications = db.notifications.getByUser(socket.user.id);
+      const notifications = await db.notifications.getByUser(socket.user.id);
+      
+      // Ensure notifications is always an array
+      const notificationsArray = Array.isArray(notifications) ? notifications : [];
       
       callback({ 
         success: true, 
-        notifications 
+        notifications: notificationsArray 
       });
     } catch (error) {
       console.error('Get notifications error:', error);
       callback({ 
         success: false, 
-        message: 'Error retrieving notifications' 
+        message: 'Error retrieving notifications',
+        notifications: [] // Return empty array on error
       });
     }
   });
@@ -31,7 +35,7 @@ module.exports = (io, socket) => {
         });
       }
       
-      const notification = db.notifications.markAsRead(notificationId);
+      const notification = await db.notifications.markAsRead(notificationId);
       
       if (!notification) {
         return callback({ 
@@ -56,7 +60,7 @@ module.exports = (io, socket) => {
   // Mark all notifications as read
   socket.on('mark_all_notifications_read', async (data, callback) => {
     try {
-      db.notifications.markAllAsRead(socket.user.id);
+      await db.notifications.markAllAsRead(socket.user.id);
       
       callback({ 
         success: true, 
